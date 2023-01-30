@@ -1,8 +1,8 @@
-import uf2/uf2block
+import uf2lib/uf2block
 export Block, BlockRef, initBlock, newBlockRef, validMagic
 
-import uf2/uf2flags
+import uf2lib/uf2flags
 export Flag, toggleFlag, hasFlag
 
-import uf2/uf2families
+import uf2lib/uf2families
 export setFamily, familiesTable
