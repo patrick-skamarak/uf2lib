@@ -18,17 +18,9 @@ type
         fileSize*: uint32 # File size or board family ID or zero
         data*: array[476, uint8] # Data, padded with zeros
         magicEnd*: uint32 # Final magic number, 0x0AB16F30
-    
-    BlockRef* = ref Block
 
 proc initBlock* () : Block =
     result = Block()
-    result.magicStart0 = MAGIC_START_0
-    result.magicStart1 = MAGIC_START_1
-    result.magicEnd = MAGIC_END
-
-proc newBlockRef*() : BlockRef = 
-    result = BlockRef()
     result.magicStart0 = MAGIC_START_0
     result.magicStart1 = MAGIC_START_1
     result.magicEnd = MAGIC_END
@@ -38,7 +30,6 @@ proc validMagic* (`block` : Block) : bool =
     if `block`.magicStart1 != MAGIC_START_1 : return false
     if `block`.magicEnd != MAGIC_END : return false
     return true
-
 
 proc `%`*(`block` : Block) : JsonNode =
     result = %{

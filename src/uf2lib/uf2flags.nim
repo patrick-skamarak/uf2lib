@@ -8,10 +8,10 @@ type
         MD5_CHECKSUM_PRESENT = 0x00004000'u32
         EXTENSION_TAGS_PRESENT = 0x00008000'u32
 
-proc toggleFlag* (`block`: BlockRef, flag : Flag ) =
+proc toggleFlag* (`block`: var Block, flag : Flag ) =
     `block`.flags = bitxor(`block`.flags, uint32 flag)
 
-proc hasFlag* (`block` : BlockRef, flag : Flag): bool = 
+proc hasFlag* (`block` : Block, flag : Flag): bool = 
     if bitand(`block`.flags, uint32 flag) == uint32 flag :
         result = true
     else:
