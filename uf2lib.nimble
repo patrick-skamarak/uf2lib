@@ -9,8 +9,8 @@ srcDir        = "src"
 
 # Dependencies
 
-requires "nim >= 1.6.10"
+requires "nim >= 1.0.0"
 
 # Tasks
 task test, "Runs tests":
-    exec """testament pattern "./tests/*Test.nim" """
+    exec """testament pattern "./tests/*Test.nim""""

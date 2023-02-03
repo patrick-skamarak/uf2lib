@@ -1,5 +1,7 @@
 testresults
 nimcache
-
+*.out
 tests/*
 !tests/*.nim
+!tests/blink.uf2
+!tests/somefile
