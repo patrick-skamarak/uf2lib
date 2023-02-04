@@ -1,11 +1,11 @@
-import uf2lib/[uf2block, uf2flags, uf2families], json
+import uf2lib/[uf2block, uf2flags, uf2families], streams
 
 type 
     Uf2File* = ref object
         fileName : string
         numBlocks : uint32
         fileSize : int64
-        file : File
+        fs : FileStream
     Uf2IOError* = ref object of IOError
 
 proc raiseUf2IOError( msg : string ) = 
@@ -16,33 +16,43 @@ proc raiseUf2IOError( msg : string ) =
 proc numBlocks*( uf2File : Uf2File ) : uint32 = 
     result = uf2File.numBlocks
 
-proc newUf2File*( fileName : string ) : Uf2File =
+proc newUf2File*( fileName : string ) : Uf2File = 
     result = Uf2File()
     result.fileName = fileName
-    result.file = open(fileName)
-    if not getFileSize(result.file) >= sizeof Block :
-        raiseUf2IOError("Invalid Uf2 file.")
-    result.fileSize = result.file.getFileSize()
+    result.numBlocks = 0
+
+
+proc open*( uf2File : Uf2File, fileMode : FileMode ) : FileStream =
+    uf2File.fs = newFileStream(uf2File.fileName, fileMode)
+    result = uf2File.fs
+
+proc close*( uf2File : Uf2File ) = 
+    close(uf2File.fs)
+
+proc getUf2File*( fileName : string ) : Uf2File =
+    result = newUf2File(fileName)
+    var fs = result.open(fmRead)
     var blk : Block
-    discard result.file.readBuffer(addr blk, sizeof Block)
+    discard fs.readData(addr blk, sizeof Block)
     if not validMagic blk:
         raiseUf2IOError("Invalid Uf2 file.")
     result.numBlocks = blk.numBlocks
-    close(result.file)
-
-proc open*( uf2File : Uf2File ) : File =
-    uf2File.file = open(uf2File.fileName)
-    result = uf2File.file;
-
-proc close*( uf2File : Uf2File ) = 
-    close(uf2File.file)
+    result.close()
 
 proc readBlock*( uf2File : Uf2File, blockNum : uint32 ) : Block =
     if blockNum >= uf2File.numBlocks or blockNum < 0:
         raiseUf2IOError("Index out of bounds.")
-    var file = uf2File.open()
-    file.setFilePos((int64 blockNum) * (int64 sizeof Block))
-    discard file.readBuffer(addr result, sizeof Block)
+    var fs = uf2File.open(fmRead)
+    fs.setPosition((int blockNum) * (int sizeof Block))
+    discard fs.readData(addr result, sizeof Block)
+    fs.close()
+    uf2File.close()
+
+proc writeBlock*( uf2File : Uf2File, blk : var Block ) =
+    var fs = uf2File.open(fmWrite)
+    fs.writeData(addr blk, sizeof Block)
+    uf2File.fileSize = uf2File.fileSize+sizeof Block
+    uf2File.numBlocks = uf2File.numBlocks+1
     uf2File.close()
  
 export 
