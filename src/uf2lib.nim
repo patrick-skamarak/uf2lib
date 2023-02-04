@@ -1,59 +1,53 @@
 import uf2lib/[uf2block, uf2flags, uf2families], streams
 
-type 
-    Uf2File* = ref object
-        fileName : string
-        numBlocks : uint32
-        fileSize : int64
-        fs : FileStream
-    Uf2IOError* = ref object of IOError
+type Uf2IOError* = ref Exception
 
-proc raiseUf2IOError( msg : string ) = 
+const FILE_EXISTS = "The specified file already exists."
+const INVALID_BLOCK = "An invalid block was found; The specified file is corrupted or not a valid UF2 file."
+
+proc raiseUf2IOError( reason : string ) = 
     var err = Uf2IOError()
-    err.msg = msg
+    err.msg = reason
     raise err
 
-proc numBlocks*( uf2File : Uf2File ) : uint32 = 
-    result = uf2File.numBlocks
+type Uf2File = ref object
+    fileName : string
+    fs : FileStream
 
-proc newUf2File*( fileName : string ) : Uf2File = 
+proc openFileStream*( uf2File : Uf2File, fileMode : FileMode) : FileStream =
+    if uf2File.fs == nil:
+        result = openFileStream(uf2File.fileName, fileMode)
+        uf2File.fs = result
+
+proc closeFileStream*( uf2File : Uf2File ) =
+    if uf2File.fs != nil :
+        uf2File.fs.close()
+        uf2File.fs = nil
+
+proc newUf2File*( fileName : string ) : Uf2File =
     result = Uf2File()
     result.fileName = fileName
-    result.numBlocks = 0
+    try:
+        discard result.openFileStream(fmRead)
+        result.closeFileStream()
+        raiseUf2IOError(FILE_EXISTS)
+    except IOError:
+        discard
+    except Uf2IOError:
+        raise
+    discard result.openFileStream(fmWrite)
+    result.closeFileStream()
 
-
-proc open*( uf2File : Uf2File, fileMode : FileMode ) : FileStream =
-    uf2File.fs = newFileStream(uf2File.fileName, fileMode)
-    result = uf2File.fs
-
-proc close*( uf2File : Uf2File ) = 
-    close(uf2File.fs)
-
-proc getUf2File*( fileName : string ) : Uf2File =
-    result = newUf2File(fileName)
-    var fs = result.open(fmRead)
-    var blk : Block
-    discard fs.readData(addr blk, sizeof Block)
-    if not validMagic blk:
-        raiseUf2IOError("Invalid Uf2 file.")
-    result.numBlocks = blk.numBlocks
-    result.close()
-
-proc readBlock*( uf2File : Uf2File, blockNum : uint32 ) : Block =
-    if blockNum >= uf2File.numBlocks or blockNum < 0:
-        raiseUf2IOError("Index out of bounds.")
-    var fs = uf2File.open(fmRead)
-    fs.setPosition((int blockNum) * (int sizeof Block))
-    discard fs.readData(addr result, sizeof Block)
-    fs.close()
-    uf2File.close()
-
-proc writeBlock*( uf2File : Uf2File, blk : var Block ) =
-    var fs = uf2File.open(fmWrite)
-    fs.writeData(addr blk, sizeof Block)
-    uf2File.fileSize = uf2File.fileSize+sizeof Block
-    uf2File.numBlocks = uf2File.numBlocks+1
-    uf2File.close()
+proc openUf2File*( fileName : string ) : Uf2File =
+    result = Uf2File()
+    result.fileName = fileName
+    var fs = result.openFileStream(fmRead)
+    while not atEnd fs:
+        var blk : Block
+        discard fs.readData(addr blk, sizeof Block)
+        if not validMagic blk:
+            raiseUf2IOError(INVALID_BLOCK)
+    result.closeFileStream()
  
 export 
     # uf2block
