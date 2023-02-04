@@ -15,12 +15,12 @@ type Uf2File = ref object
     fs : FileStream
 
 proc openFileStream*( uf2File : Uf2File, fileMode : FileMode) : FileStream =
-    if uf2File.fs == nil:
+    if isNil uf2File.fs:
         result = openFileStream(uf2File.fileName, fileMode)
         uf2File.fs = result
 
 proc closeFileStream*( uf2File : Uf2File ) =
-    if uf2File.fs != nil :
+    if not isNil uf2File.fs :
         uf2File.fs.close()
         uf2File.fs = nil
 
