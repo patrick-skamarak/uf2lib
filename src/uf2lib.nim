@@ -10,44 +10,44 @@ proc raiseUf2IOError( reason : string ) =
     err.msg = reason
     raise err
 
-type Uf2File = ref object
-    fileName : string
-    fs : FileStream
+type
+    Uf2FileInfo* = object
+        blockOffsets : seq[uint32]
+        fileName : string
 
-proc openFileStream*( uf2File : Uf2File, fileMode : FileMode) : FileStream =
-    if isNil uf2File.fs:
-        result = openFileStream(uf2File.fileName, fileMode)
-        uf2File.fs = result
+proc blockOffsets*( uf2FileInfo : Uf2FileInfo ) : seq[uint32] = 
+    result = uf2FileInfo.blockOffsets
 
-proc closeFileStream*( uf2File : Uf2File ) =
-    if not isNil uf2File.fs :
-        uf2File.fs.close()
-        uf2File.fs = nil
+proc openFileStream*( uf2FileInfo : Uf2FileInfo, fileMode : FileMode ) : FileStream = 
+    result = openFileStream(uf2FileInfo.fileName, fileMode)
 
-proc newUf2File*( fileName : string ) : Uf2File =
-    result = Uf2File()
+proc newUf2File*( fileName : string ) : Uf2FileInfo =
+    result = Uf2FileInfo()
     result.fileName = fileName
+    result.blockOffsets = newSeq[uint32]()
     try:
-        discard result.openFileStream(fmRead)
-        result.closeFileStream()
+        var fs = result.openFileStream(fmRead)
+        fs.close()
         raiseUf2IOError(FILE_EXISTS)
     except IOError:
         discard
     except Uf2IOError:
         raise
-    discard result.openFileStream(fmWrite)
-    result.closeFileStream()
+    var fs = result.openFileStream(fmWrite)
+    fs.close()
 
-proc openUf2File*( fileName : string ) : Uf2File =
-    result = Uf2File()
+proc openUf2File*( fileName : string ) : Uf2FileInfo =
+    result = Uf2FileInfo()
     result.fileName = fileName
     var fs = result.openFileStream(fmRead)
     while not atEnd fs:
         var blk : Block
+        result.blockOffsets.add(uint32 fs.getPosition())
         discard fs.readData(addr blk, sizeof Block)
         if not validMagic blk:
             raiseUf2IOError(INVALID_BLOCK)
-    result.closeFileStream()
+        
+    fs.close()
  
 export 
     # uf2block
